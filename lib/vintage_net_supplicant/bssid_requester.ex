@@ -125,7 +125,7 @@ defmodule VintageNetSupplicant.BSSIDRequester do
   end
 
   defp decode_bss_response(%{"mesh_id" => _} = mesh_response) do
-    {:ok, VintageNetWiFi.MeshPeer.new(mesh_response)}
+    {:ok, VintageNetSupplicant.MeshPeer.new(mesh_response)}
   end
 
   defp decode_bss_response(%{
@@ -139,7 +139,7 @@ defmodule VintageNetSupplicant.BSSIDRequester do
     flags = WPASupplicantDecoder.parse_flags(flags_string)
     signal_dbm = String.to_integer(level_string)
 
-    {:ok, VintageNetWiFi.AccessPoint.new(bssid, ssid, frequency, signal_dbm, flags)}
+    {:ok, VintageNetSupplicant.AccessPoint.new(bssid, ssid, frequency, signal_dbm, flags)}
   end
 
   defp decode_bss_response(_other) do

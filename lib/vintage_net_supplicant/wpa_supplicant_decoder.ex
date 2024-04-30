@@ -1,6 +1,6 @@
 defmodule VintageNetSupplicant.WPASupplicantDecoder do
   @moduledoc false
-  alias VintageNetWiFi.WPSData
+  alias VintageNetSupplicant.WPSData
 
   require Logger
 

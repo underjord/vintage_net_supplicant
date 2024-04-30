@@ -76,6 +76,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
   def init(args) do
     wpa_supplicant = Keyword.fetch!(args, :wpa_supplicant)
     wpa_supplicant_conf_path = Keyword.fetch!(args, :wpa_supplicant_conf_path)
+    driver = Keyword.fetch!(args, :driver)
 
     control_dir = Keyword.fetch!(args, :control_path)
     ifname = Keyword.fetch!(args, :ifname)
@@ -86,6 +87,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
     state = %{
       wpa_supplicant: wpa_supplicant,
       wpa_supplicant_conf_path: wpa_supplicant_conf_path,
+      driver: driver,
       control_dir: control_dir,
       keep_alive_interval: keep_alive_interval,
       ifname: ifname,
@@ -131,7 +133,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
         args = [
           "-i",
           state.ifname,
-          "-Dnl80211,wext",
+          "-D#{state.driver}",
           "-c",
           state.wpa_supplicant_conf_path | verbose_flag
         ]
@@ -241,7 +243,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
     end
   end
 
-  def handle_info({VintageNetWiFi.WPASupplicantLL, _priority, message}, state) do
+  def handle_info({VintageNetSupplicant.WPASupplicantLL, _priority, message}, state) do
     notification = WPASupplicantDecoder.decode_notification(message)
 
     new_state = handle_notification(notification, state)
@@ -302,7 +304,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
           &update_current_access_point/2
         )
 
-        update_current_access_point(state, VintageNetWiFi.AccessPoint.new(bssid))
+        update_current_access_point(state, VintageNetSupplicant.AccessPoint.new(bssid))
 
       ap ->
         # Known BSSID, so no need to re-query wpa_supplicant
@@ -335,7 +337,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
        ) do
     Logger.debug("Association rejected for BSSID: #{bssid}, status code: #{status_code}")
 
-    event = VintageNetWiFi.Event.new(event_name, event_data)
+    event = VintageNetSupplicant.Event.new(event_name, event_data)
 
     update_wifi_event_property(ifname, event)
     state
@@ -347,7 +349,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
        ) do
     Logger.debug("Access temporarily disabled to network: #{inspect(ssid)}")
 
-    event = VintageNetWiFi.Event.new(event_name, event_data)
+    event = VintageNetSupplicant.Event.new(event_name, event_data)
 
     update_wifi_event_property(ifname, event)
     state
@@ -358,7 +360,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
          %{ifname: ifname} = state
        ) do
     Logger.debug("Access re-enabled to network: #{inspect(ssid)}")
-    event = VintageNetWiFi.Event.new(event_name, event_data)
+    event = VintageNetSupplicant.Event.new(event_name, event_data)
     update_wifi_event_property(ifname, event)
     state
   end
@@ -369,7 +371,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
        ) do
     Logger.debug("network not found")
 
-    event = VintageNetWiFi.Event.new(event_name, %{})
+    event = VintageNetSupplicant.Event.new(event_name, %{})
 
     update_wifi_event_property(ifname, event)
     state
@@ -530,7 +532,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
               width = response["WIDTH"]
 
               signal_info =
-                VintageNetWiFi.SignalInfo.new(
+                VintageNetSupplicant.SignalInfo.new(
                   center_frequency1,
                   center_frequency2,
                   frequency,
@@ -558,12 +560,12 @@ defmodule VintageNetSupplicant.WPASupplicant do
 
   defp filter_access_points(access_points_map) do
     Enum.reduce(access_points_map, %{}, fn
-      {bssid, %VintageNetWiFi.AccessPoint{} = ap}, acc -> Map.put(acc, bssid, ap)
+      {bssid, %VintageNetSupplicant.AccessPoint{} = ap}, acc -> Map.put(acc, bssid, ap)
       {_bssid, _non_ap}, acc -> acc
     end)
   end
 
-  defp add_access_point(state, %VintageNetWiFi.AccessPoint{} = ap) do
+  defp add_access_point(state, %VintageNetSupplicant.AccessPoint{} = ap) do
     new_access_points = Map.put(state.access_points, ap.bssid, ap)
     new_state = %{state | access_points: new_access_points}
 
@@ -576,7 +578,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
     state
   end
 
-  defp update_current_access_point(state, %VintageNetWiFi.AccessPoint{} = ap) do
+  defp update_current_access_point(state, %VintageNetSupplicant.AccessPoint{} = ap) do
     new_state = %{state | current_ap: ap}
     update_current_access_point_property(new_state)
     new_state
@@ -589,7 +591,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
     state
   end
 
-  defp add_mesh_peer(state, %VintageNetWiFi.MeshPeer{} = peer) do
+  defp add_mesh_peer(state, %VintageNetSupplicant.MeshPeer{} = peer) do
     new_peers = [peer | state.peers]
     new_state = %{state | peers: new_peers}
     update_peers_property(new_state)
