@@ -1,8 +1,13 @@
+# SPDX-FileCopyrightText: 2020 Connor Rigby
+# SPDX-FileCopyrightText: 2022 Frank Hunleth
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 defmodule VintageNetSupplicant.MeshPeer do
   @moduledoc """
   Information about a WiFi mesh peer
 
-  This is a superset of the fields available on VintageNetWiFi.AccessPoint.
+  This is a superset of the fields available on VintageNetSupplicant.AccessPoint.
   """
   alias VintageNetSupplicant.{AccessPoint, Utils, WPASupplicantDecoder}
   alias VintageNetSupplicant.MeshPeer.{Capabilities, FormationInformation}

@@ -1,3 +1,15 @@
+# SPDX-FileCopyrightText: 2019 Frank Hunleth
+# SPDX-FileCopyrightText: 2020 Connor Rigby
+# SPDX-FileCopyrightText: 2020 Pavel Sorejs
+# SPDX-FileCopyrightText: 2021 Dömötör Gulyás
+# SPDX-FileCopyrightText: 2021 WN
+# SPDX-FileCopyrightText: 2022 Jon Carstens
+# SPDX-FileCopyrightText: 2022 Matt Ludwigs
+# SPDX-FileCopyrightText: 2026 Eliel A. Gordon
+# SPDX-FileCopyrightText: 2026 Jon Ringle
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 defmodule VintageNetSupplicant.WPASupplicant do
   @moduledoc """
   Control a wpa_supplicant instance for an interface.
@@ -22,6 +34,12 @@ defmodule VintageNetSupplicant.WPASupplicant do
     make sure it's still alive (defaults to 60,000 seconds)
   * `:ap_mode` - true if the WiFi module and wpa_supplicant are
     in access point mode
+  * `:driver` - the wpa_supplicant driver(s) to use (`-D`). Defaults to
+    `"nl80211,wext"`. Use `"wired"` for wired Ethernet.
+  * `:force_ap_scan` - the path to a program that forces a scan when in
+    access point mode. It's called with the interface name. Scanning in AP
+    mode returns an error without it.
+  * `:verbose` - true to enable wpa_supplicant debug output
   """
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(args) do
@@ -36,7 +54,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
   @doc """
   Initiate a scan of WiFi networks
   """
-  @spec scan(VintageNet.ifname()) :: :ok
+  @spec scan(VintageNet.ifname()) :: :ok | {:error, any()}
   def scan(ifname) do
     GenServer.call(via_name(ifname), :scan)
   end
@@ -64,7 +82,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
   `wpa_supplicant` says. See [ctrl_iface](https://w1.fi/wpa_supplicant/devel/ctrl_iface_page.html)
   and `ctrl_iface.c` for options.
 
-      iex> VintageNetWiFi.WPASupplicant.raw_command("wlan0", "GET_CAPABILITY modes")
+      iex> VintageNetSupplicant.WPASupplicant.raw_command("wlan0", "GET_CAPABILITY modes")
       {:ok, "AP MESH"}
   """
   @spec raw_command(VintageNet.ifname(), String.t()) :: {:ok, String.t()} | {:error, any()}
@@ -76,23 +94,25 @@ defmodule VintageNetSupplicant.WPASupplicant do
   def init(args) do
     wpa_supplicant = Keyword.fetch!(args, :wpa_supplicant)
     wpa_supplicant_conf_path = Keyword.fetch!(args, :wpa_supplicant_conf_path)
-    driver = Keyword.fetch!(args, :driver)
 
     control_dir = Keyword.fetch!(args, :control_path)
     ifname = Keyword.fetch!(args, :ifname)
     keep_alive_interval = Keyword.get(args, :keep_alive_interval, 60000)
     ap_mode = Keyword.get(args, :ap_mode, false)
     verbose = Keyword.get(args, :verbose, false)
+    driver = Keyword.get(args, :driver, "nl80211,wext")
+    force_ap_scan = Keyword.get(args, :force_ap_scan)
 
     state = %{
       wpa_supplicant: wpa_supplicant,
       wpa_supplicant_conf_path: wpa_supplicant_conf_path,
-      driver: driver,
       control_dir: control_dir,
       keep_alive_interval: keep_alive_interval,
       ifname: ifname,
       ap_mode: ap_mode,
       verbose: verbose,
+      driver: driver,
+      force_ap_scan: force_ap_scan,
       access_points: %{},
       clients: [],
       peers: [],
@@ -115,11 +135,13 @@ defmodule VintageNetSupplicant.WPASupplicant do
     # Start the supplicant
     {:ok, _supplicant} =
       if state.wpa_supplicant != "" do
-        # FIXME: This appears to be needed when restarting the wpa_supplicant.
-        # It is an imperfect fix to an issue when running AP mode. Sometimes
-        # AP mode would look like it came up, but you couldn't connect to it.
-        # VintageNet.info reports that the interface is disconnected.
-        Process.sleep(1000)
+        if state.ap_mode do
+          # FIXME: This appears to be needed when restarting the wpa_supplicant.
+          # It is an imperfect fix to an issue when running AP mode. Sometimes
+          # AP mode would look like it came up, but you couldn't connect to it.
+          # VintageNet.info reports that the interface is disconnected.
+          Process.sleep(1000)
+        end
 
         # Erase old old control paths just in case they exist
         Enum.each(control_paths, &File.rm/1)
@@ -127,7 +149,7 @@ defmodule VintageNetSupplicant.WPASupplicant do
         verbose_flag = if state.verbose, do: ["-dd"], else: []
 
         # -i ifname      // which interface
-        # -Dnl80211,wext // try the nl80211 driver first, then wext
+        # -D driver      // e.g., nl80211,wext to try nl80211 first, then wext
         # -c config_file // use our config file
         # -dd            // verbose
         args = [
@@ -150,17 +172,17 @@ defmodule VintageNetSupplicant.WPASupplicant do
       end
 
     # Wait for the wpa_supplicant to create its control files.
-    primary_path =
+    {primary_path, secondary_ll} =
       case wait_for_control_file(control_paths) do
         [primary_path, secondary_path] ->
           {:ok, secondary_ll} =
             WPASupplicantLL.start_link(path: secondary_path, notification_pid: self())
 
           {:ok, "OK\n"} = WPASupplicantLL.control_request(secondary_ll, "ATTACH")
-          primary_path
+          {primary_path, secondary_ll}
 
         [primary_path] ->
-          primary_path
+          {primary_path, nil}
 
         _ ->
           raise RuntimeError,
@@ -170,7 +192,11 @@ defmodule VintageNetSupplicant.WPASupplicant do
     {:ok, ll} = WPASupplicantLL.start_link(path: primary_path, notification_pid: self())
     {:ok, "OK\n"} = WPASupplicantLL.control_request(ll, "ATTACH")
 
-    {:ok, bssid_requester} = BSSIDRequester.start_link(ll: ll, notification_pid: self())
+    # Scan results live in the BSS table of the interface that scanned. In AP
+    # mode with a P2P-capable driver the primary socket is the P2P device, whose
+    # table stays empty, so BSS queries go to the interface's own socket.
+    bss_ll = secondary_ll || ll
+    {:ok, bssid_requester} = BSSIDRequester.start_link(ll: bss_ll, notification_pid: self())
 
     # Request a new AP list
     BSSIDRequester.get_all_access_points(bssid_requester, &update_all_access_points/2)
@@ -184,14 +210,15 @@ defmodule VintageNetSupplicant.WPASupplicant do
   end
 
   @impl GenServer
+  def handle_call(:scan, _from, %{ap_mode: true, force_ap_scan: nil} = state) do
+    {:reply, {:error, "force_ap_scan not configured"}, state, state.keep_alive_interval}
+  end
+
   def handle_call(:scan, _from, %{ap_mode: true} = state) do
     # When in AP mode, scans need to be forced so that they work.
     # The wpa_supplicant won't set the appropriate flag to make
-    # this happen, so call a C program to do it.
-
-    force_ap_scan = Application.app_dir(:vintage_net_wifi, ["priv", "force_ap_scan"])
-
-    case System.cmd(force_ap_scan, [state.ifname]) do
+    # this happen, so call the supplied program to do it.
+    case System.cmd(state.force_ap_scan, [state.ifname]) do
       {_output, 0} ->
         {:reply, :ok, state, state.keep_alive_interval}
 

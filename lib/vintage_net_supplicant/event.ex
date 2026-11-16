@@ -1,3 +1,9 @@
+# SPDX-FileCopyrightText: 2021 Dömötör Gulyás
+# SPDX-FileCopyrightText: 2022 Connor Rigby
+# SPDX-FileCopyrightText: 2025 Frank Hunleth
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 defmodule VintageNetSupplicant.Event do
   @moduledoc ~S"""
   WiFi events.
@@ -23,8 +29,8 @@ defmodule VintageNetSupplicant.Event do
 
   ## Examples:
 
-      iex> VintageNetWiFi.Event.new("CTRL-EVENT-ASSOC-REJECT", %{"bssid" => "ab:cd:ef:01:02:03", "status_code" => "1"})
-      %VintageNetWiFi.Event{
+      iex> VintageNetSupplicant.Event.new("CTRL-EVENT-ASSOC-REJECT", %{"bssid" => "ab:cd:ef:01:02:03", "status_code" => "1"})
+      %VintageNetSupplicant.Event{
         name: "CTRL-EVENT-ASSOC-REJECT",
         bssid: "ab:cd:ef:01:02:03",
         status_code: 1
@@ -71,25 +77,25 @@ defmodule VintageNetSupplicant.Event do
     params = sanitize_params(params)
     event = struct(__MODULE__, params)
 
-    %__MODULE__{event | name: name}
+    %{event | name: name}
   end
 
   def new("CTRL-EVENT-SSID-REENABLED" = name, params) do
     params = sanitize_params(params)
     event = struct(__MODULE__, params)
 
-    %__MODULE__{event | name: name}
+    %{event | name: name}
   end
 
   def new("CTRL-EVENT-SSID-TEMP-DISABLED" = name, params) do
     params = sanitize_params(params)
     event = struct(__MODULE__, params)
 
-    %__MODULE__{event | name: name}
+    %{event | name: name}
   end
 
   def new("CTRL-EVENT-NETWORK-NOT-FOUND" = name, _params) do
-    %__MODULE__{name: name}
+    %{name: name}
   end
 
   @integer_keys [

@@ -1,3 +1,9 @@
+# SPDX-FileCopyrightText: 2019 Frank Hunleth
+# SPDX-FileCopyrightText: 2020 Connor Rigby
+# SPDX-FileCopyrightText: 2021 Dömötör Gulyás
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 defmodule VintageNetSupplicant.WPASupplicantDecoder do
   @moduledoc false
   alias VintageNetSupplicant.WPSData
@@ -262,7 +268,7 @@ defmodule VintageNetSupplicant.WPASupplicantDecoder do
   See `wpa_supplicant/ctl_iface.c` and search for `flags=` for where this gets
   created.
   """
-  @spec parse_flags(String.t() | nil) :: [VintageNetWiFi.AccessPoint.flag()]
+  @spec parse_flags(String.t() | nil) :: [VintageNetSupplicant.AccessPoint.flag()]
   def parse_flags(str) when is_binary(str) do
     flag_strings = String.split(str, ["]", "["], trim: true)
 
