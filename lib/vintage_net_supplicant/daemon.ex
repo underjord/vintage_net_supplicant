@@ -27,7 +27,7 @@ defmodule VintageNetSupplicant.Daemon do
     they're left over from a previous run
   * `:verbose` - true to enable wpa_supplicant debug output
   """
-  @spec start_link(keyword()) :: {:ok, pid() | nil} | {:error, any()}
+  @spec start_link(keyword()) :: GenServer.on_start() | {:ok, nil}
   def start_link(opts) do
     case Keyword.fetch!(opts, :wpa_supplicant) do
       "" -> {:ok, nil}
