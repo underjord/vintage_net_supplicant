@@ -268,7 +268,7 @@ defmodule VintageNetSupplicant.WPASupplicantDecoder do
   See `wpa_supplicant/ctl_iface.c` and search for `flags=` for where this gets
   created.
   """
-  @spec parse_flags(String.t() | nil) :: [VintageNetSupplicant.AccessPoint.flag()]
+  @spec parse_flags(String.t() | nil) :: [atom()]
   def parse_flags(str) when is_binary(str) do
     flag_strings = String.split(str, ["]", "["], trim: true)
 

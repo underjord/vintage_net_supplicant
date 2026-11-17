@@ -16,10 +16,10 @@ defmodule VintageNetSupplicant.WPASupplicantLL do
   iex> VintageNetSupplicant.WPASupplicantLL.control_request(ws, "SCAN")
   {:ok, "OK\n"}
   iex> flush
-  {VintageNetSupplicant.WPASupplicant, 51, "CTRL-EVENT-SCAN-STARTED "}
-  {VintageNetSupplicant.WPASupplicant, 51, "CTRL-EVENT-BSS-ADDED 0 78:8a:20:87:7a:50"}
-  {VintageNetSupplicant.WPASupplicant, 51, "CTRL-EVENT-SCAN-RESULTS "}
-  {VintageNetSupplicant.WPASupplicant, 51, "CTRL-EVENT-NETWORK-NOT-FOUND "}
+  {VintageNetSupplicant.WPASupplicantLL, 51, "CTRL-EVENT-SCAN-STARTED "}
+  {VintageNetSupplicant.WPASupplicantLL, 51, "CTRL-EVENT-BSS-ADDED 0 78:8a:20:87:7a:50"}
+  {VintageNetSupplicant.WPASupplicantLL, 51, "CTRL-EVENT-SCAN-RESULTS "}
+  {VintageNetSupplicant.WPASupplicantLL, 51, "CTRL-EVENT-NETWORK-NOT-FOUND "}
   :ok
   iex> VintageNetSupplicant.WPASupplicantLL.control_request(ws, "BSS 0")
   {:ok,

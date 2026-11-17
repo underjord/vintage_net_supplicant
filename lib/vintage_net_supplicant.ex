@@ -6,13 +6,18 @@ defmodule VintageNetSupplicant do
   @moduledoc """
   Shared `wpa_supplicant` support for VintageNet technologies
 
-  This library runs and talks to a `wpa_supplicant` instance for a network
-  interface. It's used by `vintage_net_wifi` for WiFi and by
-  `vintage_net_ethernet` for wired IEEE 802.1X and MACsec. It's not a
-  `VintageNet.Technology` itself.
+  This is the part of talking to a `wpa_supplicant` that isn't specific to
+  WiFi:
 
-  Technologies add `VintageNetSupplicant.WPASupplicant` to the `:child_specs`
-  of their `VintageNet.Interface.RawConfig` and write the `wpa_supplicant`
-  configuration file themselves.
+  * `VintageNetSupplicant.Daemon` - start a `wpa_supplicant` for an interface
+  * `VintageNetSupplicant.WPASupplicantLL` - the control socket
+  * `VintageNetSupplicant.WPASupplicantDecoder` - decode control socket messages
+  * `VintageNetSupplicant.EAP` - track EAP status
+  * `VintageNetSupplicant.WPASupplicant` - a ready-to-use process built from
+    the above for technologies that only need authentication, like wired IEEE
+    802.1X
+
+  `vintage_net_wifi` builds its own process from the first four. Everything
+  about access points, scanning, mesh and WPS lives there.
   """
 end
