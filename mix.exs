@@ -46,6 +46,7 @@ defmodule VintageNetSupplicant.MixProject do
   defp package do
     %{
       files: [
+        "CHANGELOG.md",
         "lib",
         "LICENSES/*",
         "mix.exs",
@@ -77,7 +78,7 @@ defmodule VintageNetSupplicant.MixProject do
 
   defp docs do
     [
-      extras: ["README.md"],
+      extras: ["README.md", "CHANGELOG.md"],
       main: "readme",
       source_ref: "main",
       source_url: @source_url
