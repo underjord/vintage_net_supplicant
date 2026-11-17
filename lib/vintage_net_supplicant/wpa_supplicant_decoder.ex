@@ -6,8 +6,6 @@
 #
 defmodule VintageNetSupplicant.WPASupplicantDecoder do
   @moduledoc false
-  alias VintageNetSupplicant.WPSData
-
   require Logger
 
   @doc """
@@ -111,8 +109,9 @@ defmodule VintageNetSupplicant.WPASupplicantDecoder do
     {:event, String.trim_trailing(event)}
   end
 
+  # The credentials are WPS data in hex. Decoding them is left to the caller.
   def decode_notification(<<"WPS-CRED-RECEIVED ", rest::binary>>) do
-    {:event, "WPS-CRED-RECEIVED", WPSData.decode(rest)}
+    {:event, "WPS-CRED-RECEIVED", rest}
   end
 
   def decode_notification(<<"WPS-", _type::binary>> = event) do

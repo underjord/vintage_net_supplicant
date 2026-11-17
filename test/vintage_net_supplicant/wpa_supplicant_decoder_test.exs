@@ -398,6 +398,9 @@ defmodule VintageNetSupplicant.WPASupplicantDecoderTest do
     assert WPASupplicantDecoder.decode_notification("WPS-CRED-RECEIVED") ==
              {:event, "WPS-CRED-RECEIVED"}
 
+    assert WPASupplicantDecoder.decode_notification("WPS-CRED-RECEIVED 100e0004deadbeef") ==
+             {:event, "WPS-CRED-RECEIVED", "100e0004deadbeef"}
+
     assert WPASupplicantDecoder.decode_notification("WPS-M2D") == {:event, "WPS-M2D"}
     assert WPASupplicantDecoder.decode_notification("WPS-FAIL") == {:event, "WPS-FAIL"}
     assert WPASupplicantDecoder.decode_notification("WPS-SUCCESS") == {:event, "WPS-SUCCESS"}
