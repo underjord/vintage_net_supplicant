@@ -111,6 +111,22 @@ defmodule VintageNetSupplicant.WPASupplicantTest do
     assert MockWPASupplicant.get_requests(context.mock) == ["ATTACH", "PING"]
   end
 
+  # wpa_supplicant asks for the private key passphrase when it cannot load the key, e.g. a
+  # PKCS#11 URI without engine support. The request must not take the GenServer down.
+  @tag :capture_log
+  test "survives interactive requests", context do
+    pid = start_supplicant!(context)
+    ref = Process.monitor(pid)
+
+    MockWPASupplicant.send_message(
+      context.mock,
+      "<3>CTRL-REQ-PASSPHRASE-0:Private key passphrase needed for SSID "
+    )
+
+    refute_receive {:DOWN, ^ref, :process, ^pid, _reason}, 200
+    assert {:ok, _} = WPASupplicant.raw_command(@ifname, "PING")
+  end
+
   @tag :capture_log
   test "exits when wpa_supplicant terminates", context do
     pid = start_supplicant!(context)

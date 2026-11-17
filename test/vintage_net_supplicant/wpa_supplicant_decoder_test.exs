@@ -237,6 +237,68 @@ defmodule VintageNetSupplicant.WPASupplicantDecoderTest do
     assert WPASupplicantDecoder.decode_kv_response("\n") == %{}
   end
 
+  # wpa_supplicant formats these as "CTRL-REQ-<field>-<network id>:<text> needed for SSID <ssid>"
+  # (wpas_send_ctrl_req in wpa_supplicant/wpas_glue.c).
+  test "decodes interactive requests as wpa_supplicant formats them" do
+    # Seen with wpa_supplicant 2.12 on a wired interface (no SSID) when the private key
+    # could not be loaded
+    assert WPASupplicantDecoder.decode_notification(
+             "CTRL-REQ-PASSPHRASE-0:Private key passphrase needed for SSID "
+           ) ==
+             {:interactive, "CTRL-REQ-PASSPHRASE", 0, "Private key passphrase needed for SSID "}
+
+    assert WPASupplicantDecoder.decode_notification(
+             "CTRL-REQ-IDENTITY-1:Identity needed for SSID corp"
+           ) ==
+             {:interactive, "CTRL-REQ-IDENTITY", 1, "Identity needed for SSID corp"}
+
+    assert WPASupplicantDecoder.decode_notification(
+             "CTRL-REQ-PASSWORD-12:Password needed for SSID corp"
+           ) ==
+             {:interactive, "CTRL-REQ-PASSWORD", 12, "Password needed for SSID corp"}
+
+    assert WPASupplicantDecoder.decode_notification(
+             "CTRL-REQ-NEW_PASSWORD-1:New Password needed for SSID corp"
+           ) ==
+             {:interactive, "CTRL-REQ-NEW_PASSWORD", 1, "New Password needed for SSID corp"}
+
+    assert WPASupplicantDecoder.decode_notification("CTRL-REQ-PIN-1:PIN needed for SSID corp") ==
+             {:interactive, "CTRL-REQ-PIN", 1, "PIN needed for SSID corp"}
+
+    assert WPASupplicantDecoder.decode_notification(
+             "CTRL-REQ-PSK_PASSPHRASE-2:PSK or passphrase needed for SSID home"
+           ) ==
+             {:interactive, "CTRL-REQ-PSK_PASSPHRASE", 2,
+              "PSK or passphrase needed for SSID home"}
+
+    assert WPASupplicantDecoder.decode_notification(
+             "CTRL-REQ-EXT_CERT_CHECK-0:External server certificate validation needed for SSID "
+           ) ==
+             {:interactive, "CTRL-REQ-EXT_CERT_CHECK", 0,
+              "External server certificate validation needed for SSID "}
+  end
+
+  test "decodes interactive requests with dashes and colons in the text" do
+    assert WPASupplicantDecoder.decode_notification(
+             "CTRL-REQ-PASSWORD-3:Password needed for SSID guest-wifi: 5G"
+           ) ==
+             {:interactive, "CTRL-REQ-PASSWORD", 3, "Password needed for SSID guest-wifi: 5G"}
+
+    # SIM requests carry their own dash- and colon-separated payload
+    assert WPASupplicantDecoder.decode_notification(
+             "CTRL-REQ-SIM-0:GSM-AUTH:0102030405060708090a0b0c0d0e0f10 needed for SSID carrier"
+           ) ==
+             {:interactive, "CTRL-REQ-SIM", 0,
+              "GSM-AUTH:0102030405060708090a0b0c0d0e0f10 needed for SSID carrier"}
+  end
+
+  test "doesn't raise on unexpected interactive requests" do
+    assert WPASupplicantDecoder.decode_notification("CTRL-REQ-") == {:info, "CTRL-REQ-"}
+
+    assert WPASupplicantDecoder.decode_notification("CTRL-REQ-PIN needed") ==
+             {:info, "CTRL-REQ-PIN needed"}
+  end
+
   test "decodes interactive requests from the supplicant" do
     assert WPASupplicantDecoder.decode_notification("CTRL-REQ-IDENTITY-1-Human readable text") ==
              {:interactive, "CTRL-REQ-IDENTITY", 1, "Human readable text"}

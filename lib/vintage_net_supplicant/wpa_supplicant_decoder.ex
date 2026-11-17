@@ -18,9 +18,17 @@ defmodule VintageNetSupplicant.WPASupplicantDecoder do
           | {:event, String.t(), any(), any(), any()}
           | {:info, String.t()}
           | {:interactive, String.t(), any(), any()}
-  def decode_notification(<<"CTRL-REQ-", rest::binary>>) do
-    [field, net_id, text] = String.split(rest, "-", parts: 3, trim: true)
-    {:interactive, "CTRL-REQ-" <> field, String.to_integer(net_id), text}
+  # wpa_supplicant sends "CTRL-REQ-<field>-<network id>:<text>". See
+  # wpas_send_ctrl_req in wpa_supplicant/wpas_glue.c. A "-" before the text is
+  # accepted too since that's what this used to expect.
+  def decode_notification(<<"CTRL-REQ-", rest::binary>> = message) do
+    case Regex.run(~r/\A([A-Z0-9_]+)-(\d+)[:-](.*)\z/s, rest) do
+      [_all, field, net_id, text] ->
+        {:interactive, "CTRL-REQ-" <> field, String.to_integer(net_id), text}
+
+      nil ->
+        {:info, message}
+    end
   end
 
   def decode_notification(<<"CTRL-EVENT-BSS-ADDED", rest::binary>>) do
