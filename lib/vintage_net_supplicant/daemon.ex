@@ -50,10 +50,18 @@ defmodule VintageNetSupplicant.Daemon do
     # -dd            // verbose
     args = ["-i", ifname, "-D#{driver}", "-c", conf_path | verbose_flag]
 
+    # Run wpa_supplicant with stdin connected to /dev/null. wpa_supplicant
+    # doesn't read stdin, but libraries that it loads can. For example, the
+    # OpenSSL PKCS #11 engine prompts for a missing PIN. The stdin from MuonTrap
+    # never reaches EOF, so that would hang wpa_supplicant forever.
     MuonTrap.Daemon.start_link(
-      wpa_supplicant,
-      args,
-      VintageNet.Command.add_muon_options(stderr_to_stdout: true, log_output: :debug)
+      "/bin/sh",
+      ["-c", ~s(exec "$0" "$@" </dev/null), wpa_supplicant | args],
+      VintageNet.Command.add_muon_options(
+        stderr_to_stdout: true,
+        log_output: :debug,
+        log_prefix: "#{Path.basename(wpa_supplicant)}: "
+      )
     )
   end
 
