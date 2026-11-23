@@ -27,6 +27,13 @@ defmodule VintageNetSupplicant.EAPTest do
              )
   end
 
+  test "requests for credentials are failures" do
+    request = {:interactive, "CTRL-REQ-PIN", 0, "PIN needed for SSID "}
+
+    assert {:ok, %EAPStatus{status: :failure, method: "TLS", timestamp: %DateTime{}}} =
+             EAP.update_status(%EAPStatus{status: :started, method: "TLS"}, request)
+  end
+
   test "ignores everything else" do
     assert :unknown == EAP.update_status(%EAPStatus{}, event(%{"status" => "something new"}))
     assert :unknown == EAP.update_status(%EAPStatus{}, {:event, "CTRL-EVENT-SCAN-STARTED"})

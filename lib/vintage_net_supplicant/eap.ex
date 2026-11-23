@@ -10,7 +10,12 @@ defmodule VintageNetSupplicant.EAP do
   alias VintageNet.Interface.EAPStatus
 
   @doc """
-  Update an EAP status based on a decoded `CTRL-EVENT-EAP-STATUS` notification
+  Update an EAP status based on a decoded `wpa_supplicant` notification
+
+  `CTRL-EVENT-EAP-STATUS` notifications update the status. A `CTRL-REQ-*`
+  request is a failure: `wpa_supplicant` is asking for a credential, like a
+  PIN or a private key passphrase, and waits for an answer that never comes
+  since nothing responds to these requests.
 
   Returns `:unknown` for notifications that don't change the status.
   """
@@ -20,6 +25,10 @@ defmodule VintageNetSupplicant.EAP do
       nil -> :unknown
       changes -> {:ok, struct!(eap_status, [{:timestamp, DateTime.utc_now()} | changes])}
     end
+  end
+
+  def update_status(eap_status, {:interactive, "CTRL-REQ-" <> _field, _network_id, _text}) do
+    {:ok, struct!(eap_status, timestamp: DateTime.utc_now(), status: :failure)}
   end
 
   def update_status(_eap_status, _notification), do: :unknown

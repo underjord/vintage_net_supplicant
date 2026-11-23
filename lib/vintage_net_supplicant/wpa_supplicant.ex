@@ -131,6 +131,15 @@ defmodule VintageNetSupplicant.WPASupplicant do
     end
   end
 
+  defp handle_notification({:interactive, request, _network_id, text} = notification, state) do
+    # Nothing answers these requests, so authentication can't complete
+    Logger.warning("wpa_supplicant(#{state.ifname}): unanswered #{request}: #{text}")
+
+    {:ok, eap_status} = EAP.update_status(state.eap_status, notification)
+    EAP.put_status_property(state.ifname, eap_status)
+    %{state | eap_status: eap_status}
+  end
+
   defp handle_notification({:event, "CTRL-EVENT-TERMINATING"}, _state) do
     exit(:wpa_supplicant_terminated)
   end

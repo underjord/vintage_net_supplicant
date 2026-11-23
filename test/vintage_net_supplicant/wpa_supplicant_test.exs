@@ -123,6 +123,9 @@ defmodule VintageNetSupplicant.WPASupplicantTest do
       "<3>CTRL-REQ-PASSPHRASE-0:Private key passphrase needed for SSID "
     )
 
+    # Nothing answers the request, so it's reported as a failure
+    assert_receive {VintageNet, @eap_property, _, %{status: :failure}, _}
+
     refute_receive {:DOWN, ^ref, :process, ^pid, _reason}, 200
     assert {:ok, _} = WPASupplicant.raw_command(@ifname, "PING")
   end
